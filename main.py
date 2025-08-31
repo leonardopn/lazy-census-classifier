@@ -1,30 +1,45 @@
-from typing import TypedDict
+from typing import Literal, NotRequired, TypedDict, Mapping
 import cbrkit
 import pandas as pd
 from watchfiles import run_process
 
 from helpers.logger_block import logger_block
+import random
 
 # Variável para o novo arquivo de dataset
 DATASET_FILE = "./datasets/adult.csv"
+
+HEADER = Literal[
+    "age",
+    "workclass",
+    "fnlwgt",
+    "education",
+    "education_num",
+    "marital_status",
+    "occupation",
+    "relationship",
+    "race",
+    "sex",
+    "capital_gain",
+    "capital_loss",
+    "hours_per_week",
+    "native_country",
+    "income",
+]
 
 
 class Case(TypedDict):
     age: int
     workclass: str
-    fnlwgt: int
     education: str
-    education_num: int
     marital_status: str
     occupation: str
     relationship: str
     race: str
     sex: str
-    capital_gain: int
-    capital_loss: int
     hours_per_week: int
     native_country: str
-    income: str
+    income: NotRequired[str]  # Pode ser '>50K' ou '<=50K'
 
 
 # 1. Carregar o novo dataset
@@ -55,7 +70,7 @@ def clean_income_data(df: pd.DataFrame) -> pd.DataFrame:
     df.dropna(inplace=True)
 
     # Para simplificar, vamos remover algumas colunas que são redundantes ou menos importantes
-    df = df.drop(columns=["fnlwgt", "education-num", "capital-gain", "capital-loss"])
+    df = df.drop(columns=["fnlwgt", "education_num", "capital_gain", "capital_loss"])
 
     print(
         "Limpeza de dados concluída. Linhas com dados faltantes e colunas irrelevantes removidas."
@@ -111,12 +126,27 @@ def build_similarity_function(df: pd.DataFrame) -> cbrkit.sim.attribute_value:
         }
     )
 
-    # Cria a função de similaridade global
-    # `attribute_value` aplica a função local correta para cada atributo do caso
-    similarity_func = cbrkit.sim.attribute_value(
+    # Defina os pesos para cada atributo (valores maiores = mais importante)
+    # A soma não precisa ser 1.
+    typed_weights: Mapping[HEADER, float] = {
+        "education": 1.8,  # Nível educacional é o preditor mais forte de renda elevada
+        "occupation": 1.6,  # Cargos gerenciais e especializados fortemente associados a alta renda
+        "age": 1.4,  # Forte correlação com renda - experiência profissional acumulada
+        "hours_per_week": 1.4,  # Horas trabalhadas correlacionam diretamente com potencial de renda
+        "workclass": 1.2,  # Tipo de empregador influencia significativamente (auto-empregados, governo)
+        "marital_status": 1.0,  # Estado civil tem impacto moderado na classificação de renda
+        "relationship": 1.0,  # Posição familiar tem correlação moderada com padrões de renda
+        "sex": 0.8,  # Apresenta correlação, mas menos determinante que fatores profissionais
+        "race": 0.6,  # Menor poder preditivo independente, mas ainda com alguma influência
+        "native_country": 0.6,  # País de origem tem impacto limitado comparado a fatores profissionais
+    }
+
+    aggregator = cbrkit.sim.aggregator[HEADER]("mean", typed_weights)
+
+    # Cria a função de similaridade global com média ponderada
+    similarity_func = cbrkit.sim.attribute_value[HEADER, float](
         attributes=local_similarities,
-        # O agregador `mean` calcula a média das similaridades locais
-        aggregator=cbrkit.sim.aggregator(pooling="mean"),
+        aggregator=aggregator,  # type: ignore
     )
 
     print("Função de similaridade global construída com sucesso.")
@@ -139,18 +169,19 @@ def perform_retrieval_and_reuse(
     )
 
     # 2. Criar uma consulta de exemplo
-    query_dict = {
+    query_dict: Case = {
         "age": 20,
         "workclass": "Private",
         "education": "Masters",
-        "marital-status": "Married-civ-spouse",
+        "marital_status": "Married-civ-spouse",
         "occupation": "Prof-specialty",
         "relationship": "Husband",
         "race": "Black",
-        "hours-per-week": 1,
-        "native-country": "United-States",
+        "hours_per_week": 1,
+        "native_country": "United-States",
         "sex": "Female",
     }
+
     print("Classificando o seguinte novo caso (consulta):")
     for key, value in query_dict.items():
         print(f"  - {key}: {value}")
@@ -195,11 +226,13 @@ def evaluate_with_leave_one_out(
 
     # Seleciona uma amostra de IDs de casos para testar
     all_case_ids = list(full_casebase.keys())
-    case_ids_to_test = all_case_ids[:sample_size]
+    case_ids_to_test = random.sample(all_case_ids, sample_size)
 
     for i, case_id_to_hold_out in enumerate(case_ids_to_test):
         if (i + 1) % 20 == 0:  # Imprime o progresso a cada 20 casos
-            print(f"  Testando caso {i + 1}/{sample_size}...")
+            print(
+                f"Testando caso {i + 1}/{sample_size} -> Acurácia até o momento: {((correct_predictions / (i + 1)) * 100):.2f}%"
+            )
 
         # a. Separa o caso de teste (holdout) e a solução correta
         holdout_case = full_casebase[case_id_to_hold_out]
