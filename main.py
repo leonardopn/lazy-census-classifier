@@ -3,6 +3,8 @@ import cbrkit
 import pandas as pd
 from watchfiles import run_process
 
+from helpers.logger_block import logger_block
+
 # Variável para o novo arquivo de dataset
 DATASET_FILE = "./datasets/adult.csv"
 
@@ -128,8 +130,6 @@ def perform_retrieval_and_reuse(
     """
     Usa a base de casos e a função de similaridade para classificar um novo caso.
     """
-    print(f"\n{'=' * 40} Iniciando Classificação de um Novo Caso {'=' * 40}\n")
-
     # 1. Construir o recuperador
     retriever = cbrkit.retrieval.dropout(
         cbrkit.retrieval.build(
@@ -183,27 +183,41 @@ def perform_retrieval_and_reuse(
 
 
 def main():
-    print(f"{'=' * 40} Iniciando o Processamento do Dataset de Renda {'=' * 40}\n")
+    logger_block(
+        "Iniciando o Processamento do Dataset de Renda",
+    )
 
     # Passos 1 e 2: Carregar e limpar os dados
     df = load_income_dataset()
     df_cleaned = clean_income_data(df)
 
-    print(f"\n{'=' * 40} Tipos de dados que serão tratados {'=' * 40}\n")
+    logger_block(
+        "Exibindo informações do DataFrame limpo",
+    )
     print(df_cleaned.info())
-    print(f"{'=' * 80}\n")
 
     # Passo 3: Criar a base de casos
+    logger_block(
+        "Criando a base de casos a partir do DataFrame",
+    )
     casebase = map_dataframe_to_casebase(df_cleaned)
     print(f"Número de casos na base: {len(casebase)}")
 
     # Passo 4: Construir a função de similaridade global
+    logger_block(
+        "Construindo a função de similaridade global",
+    )
     similarity_func = build_similarity_function(df_cleaned)
 
     # Passo 5: Executar a recuperação e o reúso para fazer uma classificação
+    logger_block(
+        "Executando a recuperação e o reúso",
+    )
     perform_retrieval_and_reuse(casebase, similarity_func)
 
-    print(f"\n{'=' * 40} Fim do processamento {'=' * 40}\n")
+    logger_block(
+        "Fim do processamento",
+    )
 
 
 if __name__ == "__main__":
