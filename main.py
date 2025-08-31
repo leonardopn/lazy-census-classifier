@@ -1,4 +1,5 @@
 from typing import TypedDict
+import cbrkit
 import pandas as pd
 from watchfiles import run_process
 
@@ -85,6 +86,19 @@ def clean_income_data(df: pd.DataFrame) -> pd.DataFrame:
     return df_sample
 
 
+# 3. Mapear o DataFrame para a estrutura do cbrkit (VERSÃO CORRETA)
+def map_dataframe_to_casebase(df: pd.DataFrame) -> cbrkit.loaders.pandas:
+    """
+    Converte o DataFrame para a Casebase do cbrkit usando o wrapper pandas.
+    """
+    # A forma correta é passar o DataFrame diretamente.
+    # Cada linha se torna um caso, e cada coluna um atributo.
+    casebase = cbrkit.loaders.pandas(df)
+
+    print("Mapeamento para a base de casos do cbrkit concluído.")
+    return casebase
+
+
 # ===================================== APP ===================================== #
 
 
@@ -95,11 +109,16 @@ def main():
     df = load_income_dataset()
     df_cleaned = clean_income_data(df)
 
-    print("\nVisualização das 5 primeiras linhas do dataset limpo:")
-    print(df_cleaned.head())
+    # Passo 3: Criar a base de casos
+    casebase = map_dataframe_to_casebase(df_cleaned)
 
-    print(f"\nTipos de dados das colunas:")
-    print(df_cleaned.info())
+    # Verificar se a base de casos foi criada corretamente
+    print(f"\nNúmero de casos na base: {len(casebase)}")
+    if casebase:
+        # Pega a chave do primeiro caso e o exibe para verificação
+        first_case_key = next(iter(casebase.keys()))
+        print("\nExemplo de um caso na base:")
+        print(casebase[first_case_key])
 
     print(f"\n{'=' * 40} Fim do processamento {'=' * 40}\n")
 
