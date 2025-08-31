@@ -86,7 +86,7 @@ def clean_income_data(df: pd.DataFrame) -> pd.DataFrame:
     return df_sample
 
 
-# 3. Mapear o DataFrame para a estrutura do cbrkit (VERSÃO CORRETA)
+# 3. Mapear o DataFrame para a estrutura do cbrkit
 def map_dataframe_to_casebase(df: pd.DataFrame) -> cbrkit.loaders.pandas:
     """
     Converte o DataFrame para a Casebase do cbrkit usando o wrapper pandas.
@@ -99,7 +99,43 @@ def map_dataframe_to_casebase(df: pd.DataFrame) -> cbrkit.loaders.pandas:
     return casebase
 
 
-# ===================================== APP ===================================== #
+# 4. Construir a função de similaridade global
+def build_similarity_function(df: pd.DataFrame) -> cbrkit.sim.attribute_value:
+    """
+    Cria a função de similaridade global combinando funções locais para cada atributo.
+    """
+    # Identifica os tipos de atributos
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
+    # Remove a coluna 'income' da lista, pois ela é a solução, não parte do problema
+    categorical_cols.remove("income")
+
+    # Define as funções de similaridade locais
+    # Usamos um dicionário para mapear cada atributo à sua função de similaridade
+    local_similarities = {
+        # Para cada coluna numérica, usamos a similaridade linear
+        # O max_val é o valor máximo na coluna, usado para normalizar a distância
+        col: cbrkit.sim.numbers.linear(max_val=df[col].max())
+        for col in numeric_cols
+    }
+    local_similarities.update(
+        {
+            # Para cada coluna categórica, usamos a similaridade de igualdade
+            col: cbrkit.sim.generic.equality()
+            for col in categorical_cols
+        }
+    )
+
+    # Cria a função de similaridade global
+    # `attribute_value` aplica a função local correta para cada atributo do caso
+    similarity_func = cbrkit.sim.attribute_value(
+        attributes=local_similarities,
+        # O agregador `mean` calcula a média das similaridades locais
+        aggregator=cbrkit.sim.aggregator(pooling="mean"),
+    )
+
+    print("Função de similaridade global construída com sucesso.")
+    return similarity_func
 
 
 def main():
@@ -111,14 +147,10 @@ def main():
 
     # Passo 3: Criar a base de casos
     casebase = map_dataframe_to_casebase(df_cleaned)
+    print(f"Número de casos na base: {len(casebase)}")
 
-    # Verificar se a base de casos foi criada corretamente
-    print(f"\nNúmero de casos na base: {len(casebase)}")
-    if casebase:
-        # Pega a chave do primeiro caso e o exibe para verificação
-        first_case_key = next(iter(casebase.keys()))
-        print("\nExemplo de um caso na base:")
-        print(casebase[first_case_key])
+    # Passo 4: Construir a função de similaridade
+    similarity_func = build_similarity_function(df_cleaned)
 
     print(f"\n{'=' * 40} Fim do processamento {'=' * 40}\n")
 
