@@ -213,66 +213,62 @@ def perform_retrieval_and_reuse(
     print(f"Previsão de Renda para o novo caso: {predicted_income}")
 
 
-# 6. Avaliar o sistema com o método Leave-One-Out
+# 6. Avaliar o sistema com o método Leave-One-Out e Votação k-NN
 def evaluate_with_leave_one_out(
     full_casebase: cbrkit.loaders.pandas,
     similarity_func: cbrkit.sim.attribute_value,
-    sample_size: int = 200,  # Use um valor menor (ex: 100) para testes rápidos
+    sample_size: int = 500,
+    k: int = 5,  # Definimos o número de vizinhos a serem considerados
 ):
     """
-    Avalia o classificador usando o método Leave-One-Out em uma amostra da base de casos.
+    Avalia o classificador usando Leave-One-Out e votação majoritária com k-vizinhos.
     """
     correct_predictions = 0
-
-    # Seleciona uma amostra de IDs de casos para testar
     all_case_ids = list(full_casebase.keys())
-    case_ids_to_test = random.sample(all_case_ids, sample_size)
+    case_ids_to_test = all_case_ids[:sample_size]
 
     for i, case_id_to_hold_out in enumerate(case_ids_to_test):
-        if (i + 1) % 20 == 0:  # Imprime o progresso a cada 20 casos
+        if (i + 1) % 20 == 0:
             print(
-                f"Testando caso {i + 1}/{sample_size} -> Acurácia até o momento: {((correct_predictions / (i + 1)) * 100):.2f}%"
+                f"  Testando caso {i + 1}/{sample_size}. Acurácia atual: {(correct_predictions / (i + 1)) * 100:.2f}%"
             )
 
-        # a. Separa o caso de teste (holdout) e a solução correta
         holdout_case = full_casebase[case_id_to_hold_out]
         correct_solution = holdout_case["income"]
-
-        # b. A query é o caso de teste sem a solução
         query = holdout_case.drop("income")
 
-        # c. A base de casos para o teste são todos os outros casos
-        # Criamos um novo DataFrame sem a linha do caso de teste
         temp_df = pd.DataFrame(
             [case for idx, case in full_casebase.items() if idx != case_id_to_hold_out]
         )
         test_casebase = cbrkit.loaders.pandas(temp_df)
 
-        # d. Constrói o recuperador para a base de teste
+        # O retriever busca os 'k' vizinhos mais próximos
         retriever = cbrkit.retrieval.dropout(
             cbrkit.retrieval.build(
                 similarity_func=similarity_func,
             ),
-            limit=1,
+            limit=k,
         )
 
-        # e. Executa a recuperação
         retrieved_result = cbrkit.retrieval.apply_query(test_casebase, query, retriever)
 
-        # f. Reusa a solução e compara
         if retrieved_result.casebase:
-            retrieved_case = next(iter(retrieved_result.casebase.values()))
-            predicted_solution = retrieved_case["income"]
+            # Implementa a votação majoritária
+            votes = [case["income"] for case in retrieved_result.casebase.values()]
+
+            # Escolhe a classe que mais apareceu na votação
+            predicted_solution = max(set(votes), key=votes.count)
 
             if predicted_solution == correct_solution:
                 correct_predictions += 1
 
-    # g. Calcula e exibe a acurácia final
     accuracy = (correct_predictions / sample_size) * 100
-    print("\n-------------------- Resultado da Avaliação --------------------")
-    print(f"Previsões corretas: {correct_predictions}/{sample_size}")
+    print("\n-------------------- Resultado da Avaliação (k-NN) --------------------")
+    print(f"Total de casos testados: {sample_size}")
+    print(f"Número de vizinhos (k): {k}")
+    print(f"Previsões corretas: {correct_predictions}")
     print(f"Acurácia do sistema: {accuracy:.2f}%")
-    print("----------------------------------------------------------------")
+    print("-----------------------------------------------------------------------")
 
 
 def main():
@@ -309,9 +305,12 @@ def main():
     perform_retrieval_and_reuse(casebase, similarity_func)
 
     sample_size = 500
+    k = 5
 
-    logger_block(f"Iniciando Avaliação Leave-One-Out (amostra de {sample_size} casos)")
-    evaluate_with_leave_one_out(casebase, similarity_func, sample_size)
+    logger_block(
+        f"Iniciando Avaliação Leave-One-Out com k={k} (amostra de {sample_size} casos)",
+    )
+    evaluate_with_leave_one_out(casebase, similarity_func, sample_size, k=k)
 
     logger_block(
         "Fim do processamento",
