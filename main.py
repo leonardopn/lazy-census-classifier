@@ -1,132 +1,105 @@
 from typing import TypedDict
-from numpy import int64
 import pandas as pd
 from watchfiles import run_process
-import cbrkit
-import cbrkit.loaders
-from constant.result_limit import RESULT_LIMIT
-from evaluation.evaluate_with_leave_one_out import evaluate_with_leave_one_out
-from helpers.clean_data import clean_data
-from sim_functions.custom_ingredient_similarity import custom_ingredient_similarity
+
+# Variável para o novo arquivo de dataset
+DATASET_FILE = "./datasets/adult.csv"
 
 
-# ===================================== CONSTANTES ===================================== #
-
-DATASET_FILE = "./datasets/recipes.csv"
-
-# ===================================== TYPES ===================================== #
-
-
-class Recipe(TypedDict):
-    Id: int64
-    Title: str
-    Ingredients: list[str]
-    Instructions: str
-    Image_Name: str
-    Cleaned_Ingredients: list[str]
-    Literal_Ingredients_List: set[str]
-
-
-class CaseResult:
-    def __init__(self, case: Recipe, similarity: float):
-        self.case = case
-        self.similarity = similarity
-
-    def to_string(self) -> str:
-        return f"{self.case['Title']} (ID: {self.case['Id']}, Similaridade: {(self.similarity*100):.2f}%)"
+class Case(TypedDict):
+    age: int
+    workclass: str
+    fnlwgt: int
+    education: str
+    education_num: int
+    marital_status: str
+    occupation: str
+    relationship: str
+    race: str
+    sex: str
+    capital_gain: int
+    capital_loss: int
+    hours_per_week: int
+    native_country: str
+    income: str
 
 
-# ===================================== OPERAÇÕES ===================================== #
-
-
-# 1. Carregar o dataset
-def load_data_set() -> pd.DataFrame:
+# 1. Carregar o novo dataset
+def load_income_dataset() -> pd.DataFrame:
+    """
+    Carrega o dataset 'adult.csv' e faz uma limpeza inicial.
+    """
     try:
-        df = pd.read_csv(DATASET_FILE)
+        # O arquivo original não tem cabeçalho, então definimos os nomes das colunas manualmente
+        column_names = [
+            "age",
+            "workclass",
+            "fnlwgt",
+            "education",
+            "education-num",
+            "marital-status",
+            "occupation",
+            "relationship",
+            "race",
+            "gender",
+            "capital-gain",
+            "capital-loss",
+            "hours-per-week",
+            "native-country",
+            "income",
+        ]
+        df = pd.read_csv(
+            DATASET_FILE,
+            header=None,
+            names=column_names,
+            sep=r"\s*,\s*",  # O separador tem espaços variáveis
+            na_values="?",  # Trata os '?' como valores nulos
+            engine="python",
+        )
+        print("Dataset 'Adult Income' carregado com sucesso.")
         return df
     except FileNotFoundError:
-        print(
-            "Erro: Arquivo CSV não encontrado. Verifique o nome e o caminho do arquivo."
-        )
+        print(f"Erro: Arquivo '{DATASET_FILE}' não encontrado.")
         exit()
 
 
-# 3. Mapear o DataFrame para a estrutura do cbrkit
-def map_dataframe_to_case_base(df: pd.DataFrame) -> cbrkit.loaders.pandas:
-    return cbrkit.loaders.pandas(df)
+# 2. Limpeza e preparação dos dados
+def clean_income_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove linhas com dados faltantes e seleciona os atributos mais relevantes.
+    """
+    # Remove linhas que contêm qualquer valor nulo
+    df.dropna(inplace=True)
 
+    # Para simplificar, vamos remover algumas colunas que são redundantes ou menos importantes
+    df = df.drop(columns=["fnlwgt", "education-num", "capital-gain", "capital-loss"])
 
-# 4. Executar a recuperação de casos
-def perform_retrieval(case_base: cbrkit.loaders.pandas) -> None:
-    similarity_func = cbrkit.sim.attribute_value(
-        attributes={
-            "Literal_Ingredients_List": custom_ingredient_similarity,
-        },
-        aggregator=cbrkit.sim.aggregator(pooling="mean"),
+    print(
+        "Limpeza de dados concluída. Linhas com dados faltantes e colunas irrelevantes removidas."
     )
 
-    retriever = cbrkit.retrieval.dropout(
-        cbrkit.retrieval.build(
-            similarity_func=similarity_func,
-        ),
-        limit=RESULT_LIMIT,
-    )
+    # Pega uma amostra para trabalhar mais rápido inicialmente
+    df_sample = df.sample(n=5000, random_state=42)
+    print(f"Trabalhando com uma amostra de {len(df_sample)} casos.")
 
-    query_ingredients = {
-        "finely ground black pepper",
-        "egg whites",
-        "finely chopped thyme",
-        "kosher salt",
-        "finely chopped parsley",
-        "finely chopped rosemary",
-        "new potatoes",
-    }
-
-    query = {
-        "Literal_Ingredients_List": query_ingredients,
-    }
-    print(f"Buscando receitas com os ingredientes: {query_ingredients}\n")
-
-    retrieved_cases = cbrkit.retrieval.apply_query(
-        casebase=case_base, query=query, retrievers=retriever
-    )
-
-    print(f"Top {RESULT_LIMIT} receitas recomendadas:")
-    result = retrieved_cases.final_step
-    matched_cases = result.casebase.items()
-    position = 1
-
-    for case in matched_cases:
-        case_result = CaseResult(
-            case=Recipe(**case[1]), similarity=result.similarities[case[0]].value
-        )
-
-        print(position, case_result.to_string())
-        position += 1
+    return df_sample
 
 
 # ===================================== APP ===================================== #
 
 
-def main() -> None:
-    print(f"{'=' * 40} Iniciando o processamento... {'=' * 40}\n")
+def main():
+    print(f"{'=' * 40} Iniciando o Processamento do Dataset de Renda {'=' * 40}\n")
 
     # Passos 1 e 2: Carregar e limpar os dados
-    df = load_data_set()
-    df_cleaned = clean_data(df)
-    print(f"Dataset carregado e limpo. Usando {len(df_cleaned)} receitas como amostra.")
+    df = load_income_dataset()
+    df_cleaned = clean_income_data(df)
 
-    # Passo 3: Criar a base de casos usando o loader
-    case_base = map_dataframe_to_case_base(df_cleaned)
-    print("Base de casos criada com sucesso!")
-    print(f"Número de casos na base: {len(case_base)}")
-    print(f"Um caso de exemplo seria: {list(case_base.items())[0][1]}")
+    print("\nVisualização das 5 primeiras linhas do dataset limpo:")
+    print(df_cleaned.head())
 
-    # Passo 4: Executar a recuperação de casos
-    perform_retrieval(case_base)
-
-    # Passo 5: Avaliar o sistema com Leave-One-Out
-    evaluate_with_leave_one_out(case_base, sample_size=50)
+    print(f"\nTipos de dados das colunas:")
+    print(df_cleaned.info())
 
     print(f"\n{'=' * 40} Fim do processamento {'=' * 40}\n")
 
