@@ -322,7 +322,7 @@ def main():
     logger_block(
         "Construindo a função de similaridade global",
     )
-    similarity_func = build_similarity_function(df_cleaned, use_weights=False)
+    similarity_func = build_similarity_function(df_cleaned, use_weights=use_weights)
 
     # Passo 5: Executar a recuperação e o reúso para fazer uma classificação
     logger_block(
