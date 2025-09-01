@@ -49,26 +49,26 @@ O CSV com os dados está localizado na pasta `datasets`.
 
 ## 📈 Resultados e Análise de Performance
 
-Para validar a eficácia do classificador e o impacto das otimizações, foi conduzida uma série de testes utilizando o método _Leave-One-Out_ em uma amostra de 500 casos. As estratégias testadas incluíram a ponderação de atributos e a variação do número de vizinhos (k) no algoritmo k-NN.
+Para validar a eficácia do classificador, foi conduzida uma série de testes utilizando o método _Leave-One-Out_ em uma amostra de 500 casos. As estratégias testadas incluíram a variação do número de vizinhos (k) no algoritmo k-NN e a aplicação de pesos para os atributos.
 
 ### Resumo dos Resultados
 
-A análise dos testes revela uma jornada clara de otimização:
+A análise dos testes revela uma jornada clara de otimização e a interação complexa entre os hiperparâmetros do modelo:
 
-1.  **Impacto do k-NN:** A mudança de um classificador 1-NN para um 5-NN (Teste 1 vs. Teste 3) resultou no ganho de performance mais significativo, com um salto de **19 acertos**, provando que o sistema se torna mais robusto ao considerar múltiplos vizinhos para a votação da classe.
-2.  **Eficácia da Ponderação:** A aplicação de pesos nos atributos consistentemente melhorou ou manteve a acurácia do modelo. O maior ganho com esta técnica foi observado no modelo 10-NN (Teste 5 vs. Teste 6), com um aumento de **4 acertos**, o que levou o sistema ao seu pico de performance.
-3.  **Ponto Ótimo de Performance:** Os testes indicam que o ponto ideal para o modelo foi alcançado com **k=10 e com pesos**, atingindo **419 acertos** e uma acurácia máxima de **83.80%**.
-4.  **Início da Perda (Overfitting):** Ao aumentar o número de vizinhos para k=15, a performance começou a decair. Isso sugere que a "vizinhança" se tornou muito ampla, incluindo casos menos relevantes na votação e diminuindo a capacidade de generalização do modelo.
+1.  **Impacto do k-NN:** A mudança de um classificador 1-NN para um k-NN com mais vizinhos (k=5 e k=10) resultou nos ganhos de performance mais significativos. O salto de 1-NN para 5-NN (Teste 1 vs. Teste 3) aumentou a acurácia em quase 4%, provando que o sistema se torna muito mais robusto ao considerar múltiplos vizinhos para a votação da classe.
+2.  **Efeito da Ponderação:** A aplicação de pesos nos atributos teve um resultado ambíguo. Ela melhorou a acurácia do modelo 1-NN, mas prejudicou ligeiramente os modelos com mais vizinhos (k=5 e k=10). Isso sugere que os pesos otimizados para encontrar o _único_ melhor vizinho não são necessariamente os ideais para encontrar o melhor _grupo_ de vizinhos, demonstrando a complexa interação entre as técnicas de otimização.
+3.  **Ponto Ótimo de Performance:** Os testes indicam que o ponto ideal para o modelo foi alcançado no **Teste 5 (10-NN, sem pesos)**, atingindo **419 acertos** e uma acurácia máxima de **83.80%**.
+4.  **Início da Perda:** Ao aumentar o número de vizinhos para k=15, a performance começou a decair consistentemente, indicando que a "vizinhança" se tornou muito ampla, incluindo casos menos relevantes na votação e diminuindo a capacidade de generalização do modelo.
 
 ### Tabela Comparativa de Resultados
 
-| Estratégia do Teste            |                  Nº de Acertos (de 500)                  |                          Acurácia                           |                   Melhora (vs. anterior)                    |
-| ------------------------------ | :------------------------------------------------------: | :---------------------------------------------------------: | :---------------------------------------------------------: |
-| Teste 1 (1-NN, sem pesos)      |                           391                            |                           78.20%                            |                              -                              |
-| Teste 2 (1-NN, **com** pesos)  |                           393                            |                           78.60%                            |                           +0.40%                            |
-| Teste 3 (5-NN, sem pesos)      |                           410                            |                           82.00%                            | <span style="color:green;font-weight:bold">👑 +3.40%</span> |
-| Teste 4 (5-NN, **com** pesos)  |                           410                            |                           82.00%                            |                           +0.00%                            |
-| Teste 5 (10-NN, sem pesos)     |                           415                            |                           83.00%                            |                           +1.00%                            |
-| Teste 6 (10-NN, **com** pesos) | <span style="color:green;font-weight:bold">👑 419</span> | <span style="color:green;font-weight:bold">👑 83.80%</span> |                           +0.80%                            |
-| Teste 7 (15-NN, sem pesos)     |                           415                            |                           83.00%                            |  <span style="color:red;font-weight:bold">👎 -0.80%</span>  |
-| Teste 8 (15-NN, **com** pesos) |                           415                            |                           83.00%                            |                            0.00%                            |
+| Estratégia do Teste            | Nº de Acertos (de 500) |   Acurácia    | Melhora (vs. anterior) |
+| ------------------------------ | :--------------------: | :-----------: | :--------------------: |
+| Teste 1 (1-NN, sem pesos)      |          391           |    78.20%     |           -            |
+| Teste 2 (1-NN, **com** pesos)  |          393           |    78.60%     |         +0.40%         |
+| Teste 3 (5-NN, sem pesos)      |          410           |    82.00%     |       👑 +3.40%        |
+| Teste 4 (5-NN, **com** pesos)  |          406           |    81.20%     |         -0.80%         |
+| Teste 5 (10-NN, sem pesos)     |       **👑 419**       | **👑 83.80%** |       **+2.60%**       |
+| Teste 6 (10-NN, **com** pesos) |          418           |    83.60%     |         -0.20%         |
+| Teste 7 (15-NN, sem pesos)     |          415           |    83.00%     |         -0.60%         |
+| Teste 8 (15-NN, **com** pesos) |          410           |    82.00%     |        👎-1.00%        |

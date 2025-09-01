@@ -311,7 +311,7 @@ def evaluate_with_leave_one_out(
 def main():
     sample_size = 500
     k = 10
-    use_weights = True
+    use_weights = False
 
     logger_block(
         "Iniciando o Processamento do Dataset de Renda",
