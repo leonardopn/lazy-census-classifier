@@ -159,7 +159,9 @@ def build_similarity_function(
 
 # 5. Executar a recuperação e o reúso para classificar um novo caso
 def perform_retrieval_and_reuse(
-    casebase: cbrkit.loaders.pandas, similarity_func: cbrkit.sim.attribute_value
+    casebase: cbrkit.loaders.pandas,
+    similarity_func: cbrkit.sim.attribute_value,
+    k: int = 1,
 ):
     """
     Usa a base de casos e a função de similaridade para classificar um novo caso.
@@ -169,7 +171,7 @@ def perform_retrieval_and_reuse(
         cbrkit.retrieval.build(
             similarity_func=similarity_func,
         ),
-        limit=1,
+        limit=k,
     )
 
     # 2. Criar uma consulta de exemplo
@@ -203,18 +205,31 @@ def perform_retrieval_and_reuse(
 
     # 4. Exibir os resultados
     # Pega o ID do primeiro (e único) caso recuperado
-    matched_case_id = next(iter(retrieved_result.casebase.keys()))
-    matched_case_data = retrieved_result.casebase[matched_case_id]
-    similarity_data = retrieved_result.similarities[matched_case_id]
 
-    predicted_income = matched_case_data["income"]
+    predicted_income = "Indefinido"
 
-    # Exibe a similaridade detalhada por atributo e a similaridade global
-    print(f"\nSimilaridade detalhada: {similarity_data}")
-    print(
-        f"\nCaso mais similar encontrado (ID: {matched_case_id}) com similaridade de {similarity_data.value*100:.2f}%"
-    )
-    print(f"Previsão de Renda para o novo caso: {predicted_income}")
+    # Faz um k-nn e determina o resultado
+    if retrieved_result.casebase:
+        votes = [case["income"] for case in retrieved_result.casebase.values()]
+        predicted_solution = max(set(votes), key=votes.count)
+        case_iterator = iter(retrieved_result.casebase.keys())
+        predicted_income = predicted_solution
+
+        # Exibe a similaridade detalhada por atributo e a similaridade global
+        print("\n-------------------- Resultado da Recuperação --------------------")
+        print(f"Renda prevista: {predicted_income}")
+        print(f"Casos similares encontrados: {len(retrieved_result.casebase)}")
+        print(f"Detalhes dos casos similares:")
+        for case in retrieved_result.casebase.values():
+            case_id = next(case_iterator)
+            print(f"  - ID: {case_id}, Renda: {case['income']}")
+            print(
+                f"    Similaridade: {retrieved_result.similarities[case_id].value*100:.2f}%"
+            )
+            print(f"    Atributos similares:")
+            for attr, value in case.items():
+                if attr != "income":
+                    print(f"      - {attr}: {value}")
 
 
 def evaluate_single_case(args) -> bool:
@@ -328,8 +343,9 @@ def main():
     logger_block(
         "Executando a recuperação e o reúso",
     )
-    perform_retrieval_and_reuse(casebase, similarity_func)
+    perform_retrieval_and_reuse(casebase, similarity_func, k)
 
+    # Passo 6: Avaliar o sistema com Leave-One-Out em paralelo
     logger_block(
         f"Iniciando Avaliação Leave-One-Out com k={k} {'com pesos' if use_weights else 'sem pesos'} (amostra de {sample_size} casos)",
     )
