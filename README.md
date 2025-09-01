@@ -19,7 +19,7 @@ O sistema implementa várias técnicas para otimizar a precisão da classificaç
 
 ## 📊 Dataset
 
-O projeto utiliza o dataset [**"Adult Census Income"**](https://www.kaggle.com/datasets/mosapabdelghany/adult-income-prediction-dataset), obtido do repositório UCI Machine Learning. Ele contém informações demográficas de mais de 30.000 indivíduos e o objetivo é classificar a coluna `income` em uma de duas categorias: `<=50K` ou `>50K`.
+O projeto utiliza o dataset [**"Adult Census Income"**](https://www.kaggle.com/datasets/mosapabdelghany/adult-income-prediction-dataset), obtido do repositório Kaggle. Ele contém informações demográficas de mais de 30.000 indivíduos e o objetivo é classificar a coluna `income` em uma de duas categorias: `<=50K` ou `>50K`.
 
 O CSV com os dados está localizado na pasta `datasets`.
 
