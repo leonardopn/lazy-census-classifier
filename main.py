@@ -98,7 +98,9 @@ def map_dataframe_to_casebase(df: pd.DataFrame) -> cbrkit.loaders.pandas:
 
 
 # 4. Construir a função de similaridade global
-def build_similarity_function(df: pd.DataFrame) -> cbrkit.sim.attribute_value:
+def build_similarity_function(
+    df: pd.DataFrame, use_weights: bool
+) -> cbrkit.sim.attribute_value:
     """
     Cria a função de similaridade global combinando funções locais para cada atributo.
     """
@@ -142,7 +144,9 @@ def build_similarity_function(df: pd.DataFrame) -> cbrkit.sim.attribute_value:
         "native_country": 0.6,  # País de origem tem impacto limitado comparado a fatores profissionais
     }
 
-    aggregator = cbrkit.sim.aggregator[HEADER]("mean", typed_weights)
+    aggregator = cbrkit.sim.aggregator[HEADER](
+        "mean", typed_weights if use_weights else None
+    )
 
     # Cria a função de similaridade global com média ponderada
     similarity_func = cbrkit.sim.attribute_value[HEADER, float](
@@ -291,6 +295,10 @@ def evaluate_with_leave_one_out(
 
 
 def main():
+    sample_size = 500
+    k = 10
+    use_weights = True
+
     logger_block(
         "Iniciando o Processamento do Dataset de Renda",
     )
@@ -315,7 +323,7 @@ def main():
     logger_block(
         "Construindo a função de similaridade global",
     )
-    similarity_func = build_similarity_function(df_cleaned)
+    similarity_func = build_similarity_function(df_cleaned, use_weights=False)
 
     # Passo 5: Executar a recuperação e o reúso para fazer uma classificação
     logger_block(
@@ -323,11 +331,8 @@ def main():
     )
     perform_retrieval_and_reuse(casebase, similarity_func)
 
-    sample_size = 500
-    k = 10
-
     logger_block(
-        f"Iniciando Avaliação Leave-One-Out com k={k} (amostra de {sample_size} casos)",
+        f"Iniciando Avaliação Leave-One-Out com k={k} {'com pesos' if use_weights else 'sem pesos'} (amostra de {sample_size} casos)",
     )
     evaluate_with_leave_one_out(casebase, similarity_func, sample_size, k=k)
 
