@@ -3,9 +3,8 @@ from typing import Literal, NotRequired, TypedDict, Mapping
 import cbrkit
 import pandas as pd
 from watchfiles import run_process
-
 from helpers.logger_block import logger_block
-import random
+
 
 # Variável para o novo arquivo de dataset
 DATASET_FILE = "./datasets/adult.csv"
