@@ -333,7 +333,7 @@ def main():
     logger_block(
         f"Iniciando Avaliação Leave-One-Out com k={k} {'com pesos' if use_weights else 'sem pesos'} (amostra de {sample_size} casos)",
     )
-    evaluate_with_leave_one_out(casebase, similarity_func, sample_size, k=k)
+    evaluate_with_leave_one_out(casebase, similarity_func, sample_size, k)
 
     logger_block(
         "Fim do processamento",
