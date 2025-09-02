@@ -1,14 +1,10 @@
 [project]
-name = "recipes-problem-cbr"
+name = "lazy-census-classifier"
 version = "0.1.0"
-description = "Add your description here"
+description = "Este projeto é um classificador de aprendizado de máquina desenvolvido como parte da disciplina de Pós-Graduação em Aprendizado de Máquina. O sistema utiliza a abordagem de Raciocínio Baseado em Casos (CBR), um paradigma de Lazy Learning, para prever se a renda anual de um indivíduo excede $50.000 com base em dados demográficos do censo. "
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "cbrkit[all]>=0.28.2",
-    "nltk>=3.9.1",
-    "pandas>=2.3.2",
-]
+dependencies = ["cbrkit[all]>=0.28.2", "nltk>=3.9.1", "pandas>=2.3.2"]
 
 [dependency-groups]
 dev = ["pandas-stubs>=2.3.0.250703", "watchfiles>=1.1.0"]
