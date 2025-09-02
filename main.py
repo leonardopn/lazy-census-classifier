@@ -277,7 +277,7 @@ def evaluate_with_leave_one_out(
     Avalia o classificador em paralelo usando ProcessPoolExecutor.
     """
     all_case_ids = list(full_casebase.keys())
-    case_ids_to_test = all_case_ids[:sample_size]
+    case_ids_to_test = sorted(all_case_ids[:sample_size])
 
     tasks = [
         (case_id, full_casebase, similarity_func, k) for case_id in case_ids_to_test
